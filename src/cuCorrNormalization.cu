@@ -53,7 +53,7 @@ __device__ float sumReduceBlock(float sum, volatile float *shmem)
 
 // cuda kernel to subtract mean value from the images
 template<const int Nthreads>
-__global__ void cuArraysMean_kernel(float *images, float *image_sum, int imageSize, float invSize, int nImages)
+__global__ void cuArraysMean_kernel(float2 *images, float2 *image_sum, int imageSize, float invSize, int nImages)
 {
     __shared__ float shmem[Nthreads];
 
@@ -69,13 +69,27 @@ __global__ void cuArraysMean_kernel(float *images, float *image_sum, int imageSi
     float sum  = 0.0f;
     // perform the reduction beyond one block
     // save the results for each thread in block
+    // real part
     for (int i = tid; i < imageSize; i += Nthreads)
-            sum += imageD[i];
+            sum += imageD[i].x;
     // reduction within the block
     sum = sumReduceBlock<Nthreads>(sum, shmem);
 
     const float mean = sum * invSize;
-    if(tid ==0) image_sum[bid] = mean;
+    if(tid ==0) image_sum[bid].x = mean;
+
+    sum  = 0.0f;
+    // perform the reduction beyond one block
+    // save the results for each thread in block
+    // imaginary part
+    for (int i = tid; i < imageSize; i += Nthreads)
+            sum += imageD[i].y;
+    // reduction within the block
+    sum = sumReduceBlock<Nthreads>(sum, shmem);
+
+    mean = sum * invSize;
+    if(tid ==0) image_sum[bid].y = mean;
+
 }
 
 /**
@@ -84,7 +98,7 @@ __global__ void cuArraysMean_kernel(float *images, float *image_sum, int imageSi
  * @param[out] mean Output mean values
  * @param[in] stream cudaStream
  */
-void cuArraysMeanValue(cuArrays<float> *images, cuArrays<float> *mean, cudaStream_t stream)
+void cuArraysMeanValue(cuArrays<float2> *images, cuArrays<float2> *mean, cudaStream_t stream)
 {
     const dim3 grid(images->count, 1, 1);
     const int imageSize = images->width*images->height;
@@ -96,7 +110,7 @@ void cuArraysMeanValue(cuArrays<float> *images, cuArrays<float> *mean, cudaStrea
 
 // cuda kernel to compute and subtracts mean value from the images
 template<const int Nthreads>
-__global__ void cuArraysSubtractMean_kernel(float *images, int imageSize, float invSize, int nImages)
+__global__ void cuArraysSubtractMean_kernel(float2 *images, int imageSize, float invSize, int nImages)
 {
     __shared__ float shmem[Nthreads];
 
@@ -112,11 +126,20 @@ __global__ void cuArraysSubtractMean_kernel(float *images, int imageSize, float 
     // compute the sum
     float sum  = 0.0f;
     for (int i = tid; i < imageSize; i += Nthreads)
-            sum += imageD[i];
+            sum += imageD[i].x;
     sum = sumReduceBlock<Nthreads>(sum, shmem);
 
     // compute the mean
-    const float mean = sum * invSize;
+    float2 mean;
+    mean.x = sum * invSize;
+
+    sum  = 0.0f;
+    for (int i = tid; i < imageSize; i += Nthreads)
+            sum += imageD[i].y;
+    sum = sumReduceBlock<Nthreads>(sum, shmem);
+    mean.y = sum * invSize;
+
+
     // subtract the mean from each pixel
     for (int i = tid; i < imageSize; i += Nthreads)
             imageD[i] -= mean;
@@ -128,7 +151,7 @@ __global__ void cuArraysSubtractMean_kernel(float *images, int imageSize, float 
  * @param[out] mean Output mean values
  * @param[in] stream cudaStream
  */
-void cuArraysSubtractMean(cuArrays<float> *images, cudaStream_t stream)
+void cuArraysSubtractMean(cuArrays<float2> *images, cudaStream_t stream)
 {
     const dim3 grid(images->count, 1, 1);
     const int imageSize = images->width*images->height;
@@ -377,12 +400,20 @@ void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArra
 
 }
 
-void cuCorrNormalize64(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream)
+template<int N> struct Log2;
+template<> struct Log2<64> { static const int value = 6; };
+template<> struct Log2<128> { static const int value = 7; };
+template<> struct Log2<256> { static const int value = 8; };
+template<> struct Log2<512> { static const int value = 9; };
+template<> struct Log2<1024> { static const int value = 10; };
+
+template<int Size>
+void cuCorrNormalizeFixed(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream)
 {
     const int nImages = correlation->count;
     const dim3 grid(1, 1, nImages);
     const float invReferenceSize = 1.0f/reference->size;
-    cuCorrNormalize_kernel< 6><<<grid,  64, 0, stream>>>(nImages,
+    cuCorrNormalize_kernel<Log2<Size>::value><<<grid, Size, 0, stream>>>(nImages,
                 reference->devData, reference->height, reference->width, reference->size,
                 secondary->devData, secondary->height, secondary->width, secondary->size,
                 correlation->devData, correlation->height, correlation->width, correlation->size,
@@ -390,57 +421,20 @@ void cuCorrNormalize64(cuArrays<float> *correlation, cuArrays<float> *reference,
     getLastCudaError("cuCorrNormalize kernel error");
 }
 
-void cuCorrNormalize128(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream)
-{
-    const int nImages = correlation->count;
-    const dim3 grid(1, 1, nImages);
-    const float invReferenceSize = 1.0f/reference->size;
-    cuCorrNormalize_kernel< 7><<<grid,  128, 0, stream>>>(nImages,
-                reference->devData, reference->height, reference->width, reference->size,
-                secondary->devData, secondary->height, secondary->width, secondary->size,
-                correlation->devData, correlation->height, correlation->width, correlation->size,
-                invReferenceSize);
-    getLastCudaError("cuCorrNormalize kernel error");
-}
-
-void cuCorrNormalize256(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream)
-{
-    const int nImages = correlation->count;
-    const dim3 grid(1, 1, nImages);
-    const float invReferenceSize = 1.0f/reference->size;
-    cuCorrNormalize_kernel< 8><<<grid,  256, 0, stream>>>(nImages,
-                reference->devData, reference->height, reference->width, reference->size,
-                secondary->devData, secondary->height, secondary->width, secondary->size,
-                correlation->devData, correlation->height, correlation->width, correlation->size,
-                invReferenceSize);
-    getLastCudaError("cuCorrNormalize kernel error");
-}
-
-void cuCorrNormalize512(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream)
-{
-    const int nImages = correlation->count;
-    const dim3 grid(1, 1, nImages);
-    const float invReferenceSize = 1.0f/reference->size;
-    cuCorrNormalize_kernel< 9><<<grid,  512, 0, stream>>>(nImages,
-                reference->devData, reference->height, reference->width, reference->size,
-                secondary->devData, secondary->height, secondary->width, secondary->size,
-                correlation->devData, correlation->height, correlation->width, correlation->size,
-                invReferenceSize);
-    getLastCudaError("cuCorrNormalize kernel error");
-}
-
-void cuCorrNormalize1024(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream)
-{
-    const int nImages = correlation->count;
-    const dim3 grid(1, 1, nImages);
-    const float invReferenceSize = 1.0f/reference->size;
-    cuCorrNormalize_kernel< 10><<<grid,  1024, 0, stream>>>(nImages,
-                reference->devData, reference->height, reference->width, reference->size,
-                secondary->devData, secondary->height, secondary->width, secondary->size,
-                correlation->devData, correlation->height, correlation->width, correlation->size,
-                invReferenceSize);
-    getLastCudaError("cuCorrNormalize kernel error");
-}
-
+template void cuCorrNormalizeFixed<64>(cuArrays<float> *correlation,
+        cuArrays<float> *reference, cuArrays<float> *secondary,
+        cudaStream_t stream);
+template void cuCorrNormalizeFixed<128>(cuArrays<float> *correlation,
+        cuArrays<float> *reference, cuArrays<float> *secondary,
+        cudaStream_t stream);
+template void cuCorrNormalizeFixed<256>(cuArrays<float> *correlation,
+        cuArrays<float> *reference, cuArrays<float> *secondary,
+        cudaStream_t stream);
+template void cuCorrNormalizeFixed<512>(cuArrays<float> *correlation,
+        cuArrays<float> *reference, cuArrays<float> *secondary,
+        cudaStream_t stream);
+template void cuCorrNormalizeFixed<1024>(cuArrays<float> *correlation,
+        cuArrays<float> *reference, cuArrays<float> *secondary,
+        cudaStream_t stream);
 
 // end of file

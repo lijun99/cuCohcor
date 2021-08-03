@@ -15,12 +15,11 @@ class cuFreqCorrelator
 {
 private:
     // handles for forward/backward fft
-    cufftHandle forwardPlan;
-    cufftHandle backwardPlan;
+    cufftHandle fftPlan;
     // work data
     cuArrays<float2> *workFM;
     cuArrays<float2> *workFS;
-    cuArrays<float> *workT;
+    cuArrays<float2> *workT;
     // cuda stream
     cudaStream_t stream;
 
@@ -30,7 +29,7 @@ public:
     // destructor
     ~cuFreqCorrelator();
     // executor
-    void execute(cuArrays<float> *templates, cuArrays<float> *images, cuArrays<float> *results);
+    void execute(cuArrays<float2> *templates, cuArrays<float2> *images, cuArrays<float> *results);
 };
 
 #endif //__CUCORRFREQUENCY_H

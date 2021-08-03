@@ -13,40 +13,47 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
 
     // load reference image chunk
     loadReferenceChunk();
-    // take amplitudes
-    cuArraysAbs(c_referenceBatchRaw, r_referenceBatchRaw, stream);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the raw reference image(s)
     c_referenceBatchRaw->outputToFile("c_referenceBatchRaw", stream);
-    r_referenceBatchRaw->outputToFile("r_referenceBatchRaw", stream);
+    //r_referenceBatchRaw->outputToFile("r_referenceBatchRaw", stream);
 #endif
 
-    // compute and subtract mean values (for normalized)
-    cuArraysSubtractMean(r_referenceBatchRaw, stream);
+    // deramp ; 1=linear, others = none
+    cuDeramp(param->derampMethod, c_referenceBatchRaw, stream);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the raw reference image(s)
-    r_referenceBatchRaw->outputToFile("r_referenceBatchRawSubMean", stream);
+    c_referenceBatchRaw->outputToFile("c_referenceBatchedRawDeramped", stream);
+#endif
+
+    // compute and subtract mean values (for normalized)
+    cuArraysSubtractMean(c_referenceBatchRaw, stream);
+
+#ifdef CUAMPCOR_DEBUG
+    // dump the raw reference image(s)
+    c_referenceBatchRaw->outputToFile("c_referenceBatchRawSubMean", stream);
 #endif
 
     // load secondary image chunk
     loadSecondaryChunk();
-    // take amplitudes
-    cuArraysAbs(c_secondaryBatchRaw, r_secondaryBatchRaw, stream);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the raw secondary image(s)
     c_secondaryBatchRaw->outputToFile("c_secondaryBatchRaw", stream);
-    r_secondaryBatchRaw->outputToFile("r_secondaryBatchRaw", stream);
+#endif
+
+    // deramp ; 1=linear, others = none
+    cuDeramp(param->derampMethod, c_secondaryBatchRaw, stream);
+
+#ifdef CUAMPCOR_DEBUG
+    // dump the raw reference image(s)
+    c_secondaryBatchRaw->outputToFile("c_secondaryBatchRawSubMean", stream);
 #endif
 
     //cross correlation for un-oversampled data
-    if(param->algorithm == 0) {
-        cuCorrFreqDomain->execute(r_referenceBatchRaw, r_secondaryBatchRaw, r_corrBatchRaw);
-    } else {
-        cuCorrTimeDomain(r_referenceBatchRaw, r_secondaryBatchRaw, r_corrBatchRaw, stream); //time domain cross correlation
-    }
+    cuCorrFreqDomain->execute(c_referenceBatchRaw, c_secondaryBatchRaw, r_corrBatchRaw);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the un-normalized correlation surface
@@ -54,7 +61,7 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
 #endif
 
     // normalize the correlation surface
-    corrNormalizerRaw->execute(r_corrBatchRaw, r_referenceBatchRaw, r_secondaryBatchRaw, stream);
+    corrNormalizerRaw->execute(r_corrBatchRaw, c_referenceBatchRaw, c_secondaryBatchRaw, stream);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the normalized correlation surface
@@ -108,46 +115,35 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
 #endif
 
     // oversample reference
-    // (deramping included in oversampler)
-    referenceBatchOverSampler->execute(c_referenceBatchRaw, c_referenceBatchOverSampled, param->derampMethod);
-    // take amplitudes
-    cuArraysAbs(c_referenceBatchOverSampled, r_referenceBatchOverSampled, stream);
+    // (deramping included in oversampler, but not necessary)
+    referenceBatchOverSampler->execute(c_referenceBatchRaw, c_referenceBatchOverSampled, 0);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the oversampled reference image(s)
     c_referenceBatchOverSampled->outputToFile("c_referenceBatchOverSampled", stream);
-    r_referenceBatchOverSampled->outputToFile("r_referenceBatchOverSampled", stream);
 #endif
 
     // compute and subtract the mean value
-    cuArraysSubtractMean(r_referenceBatchOverSampled, stream);
+    cuArraysSubtractMean(c_referenceBatchOverSampled, stream);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the oversampled reference image(s) with mean subtracted
-    r_referenceBatchOverSampled->outputToFile("r_referenceBatchOverSampledSubMean",stream);
+    c_referenceBatchOverSampled->outputToFile("c_referenceBatchOverSampledSubMean",stream);
 #endif
 
     // extract secondary and oversample
     cuArraysCopyExtract(c_secondaryBatchRaw, c_secondaryBatchZoomIn, offsetInit, stream);
-    secondaryBatchOverSampler->execute(c_secondaryBatchZoomIn, c_secondaryBatchOverSampled, param->derampMethod);
-    // take amplitudes
-    cuArraysAbs(c_secondaryBatchOverSampled, r_secondaryBatchOverSampled, stream);
+    secondaryBatchOverSampler->execute(c_secondaryBatchZoomIn, c_secondaryBatchOverSampled, 0);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the extracted raw secondary image
     c_secondaryBatchZoomIn->outputToFile("c_secondaryBatchZoomIn", stream);
     // dump the oversampled secondary image(s)
     c_secondaryBatchOverSampled->outputToFile("c_secondaryBatchOverSampled", stream);
-    r_secondaryBatchOverSampled->outputToFile("r_secondaryBatchOverSampled", stream);
 #endif
 
     // correlate oversampled images
-    if(param->algorithm == 0) {
-        cuCorrFreqDomain_OverSampled->execute(r_referenceBatchOverSampled, r_secondaryBatchOverSampled, r_corrBatchZoomIn);
-    }
-    else {
-        cuCorrTimeDomain(r_referenceBatchOverSampled, r_secondaryBatchOverSampled, r_corrBatchZoomIn, stream);
-    }
+    cuCorrFreqDomain_OverSampled->execute(c_referenceBatchOverSampled, c_secondaryBatchOverSampled, r_corrBatchZoomIn);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the oversampled correlation surface (un-normalized)
@@ -553,17 +549,18 @@ cuAmpcorChunk::cuAmpcorChunk(cuAmpcorParameter *param_, GDALImage *reference_, G
             stream);
     }
 
-    corrNormalizerRaw = new cuNormalizer(
+    corrNormalizerRaw = std::unique_ptr<cuNormalizeProcessor>(newCuNormalizer(
         param->searchWindowSizeHeightRaw,
         param->searchWindowSizeWidthRaw,
         param->numberWindowDownInChunk * param->numberWindowAcrossInChunk
-        );
+        ));
 
-    corrNormalizerOverSampled = new cuNormalizer(
+    corrNormalizerOverSampled =
+        std::unique_ptr<cuNormalizeProcessor>(newCuNormalizer(
         param->searchWindowSizeHeight,
         param->searchWindowSizeWidth,
         param->numberWindowDownInChunk * param->numberWindowAcrossInChunk
-        );
+        ));
 
 
 #ifdef CUAMPCOR_DEBUG

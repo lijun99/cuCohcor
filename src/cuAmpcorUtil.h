@@ -35,6 +35,7 @@ void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float> *imagesOut,
 void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float2> *imagesOut, int2 offset, cudaStream_t stream);
 void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float2> *imagesOut, cuArrays<int2> *offsets, cudaStream_t stream);
 void cuArraysCopyExtract(cuArrays<float3> *imagesIn, cuArrays<float3> *imagesOut, int2 offset, cudaStream_t stream);
+void cuArraysCopyExtractC2A(cuArrays<float2> *imagesIn, cuArrays<float> *imagesOut, int2 offset, cudaStream_t stream);
 
 void cuArraysCopyInsert(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut, int offsetX, int offersetY, cudaStream_t stream);
 void cuArraysCopyInsert(cuArrays<float3> *imageIn, cuArrays<float3> *imageOut, int offsetX, int offersetY, cudaStream_t stream);
@@ -59,13 +60,20 @@ void cuArraysPadding(cuArrays<float2> *image1, cuArrays<float2> *image2, cudaStr
 void cuArraysPaddingMany(cuArrays<float2> *image1, cuArrays<float2> *image2, cudaStream_t stream);
 
 //in cuCorrNormalization.cu: utilities to normalize the cross correlation function
-void cuArraysSubtractMean(cuArrays<float> *images, cudaStream_t stream);
+void cuArraysSubtractMean(cuArrays<float2> *images, cudaStream_t stream);
 void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArrays<float> *results, cudaStream_t stream);
 void cuCorrNormalize64(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
 void cuCorrNormalize128(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
 void cuCorrNormalize256(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
 void cuCorrNormalize512(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
 void cuCorrNormalize1024(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
+
+// in cuCorrNormalizationSAT.cu: to normalize the cross correlation function with sum area table
+void cuCorrNormalizeSAT(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary,
+    cuArrays<float> * referenceSum2, cuArrays<float> *secondarySAT, cuArrays<float> *secondarySAT2, cudaStream_t stream);
+
+template<int Size>
+void cuCorrNormalizeFixed(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
 
 // in cuCorrNormalizationSAT.cu: to normalize the cross correlation function with sum area table
 void cuCorrNormalizeSAT(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary,
@@ -85,7 +93,7 @@ void cuDetermineSecondaryExtractOffset(cuArrays<int2> *maxLoc, cuArrays<int2> *m
 //in cuCorrTimeDomain.cu: cross correlation in time domain
 void cuCorrTimeDomain(cuArrays<float> *templates, cuArrays<float> *images, cuArrays<float> *results, cudaStream_t stream);
 
-//in cuCorrFrequency.cu: cross correlation in freq domain, also include fft correlatior class
+//in cuCorrFrequency.cu: cross correlation in freq domain, also include fft correlator class
 void cuArraysElementMultiply(cuArrays<float2> *image1, cuArrays<float2> *image2, cudaStream_t stream);
 void cuArraysElementMultiplyConjugate(cuArrays<float2> *image1, cuArrays<float2> *image2, float coef, cudaStream_t stream);
 

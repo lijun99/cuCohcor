@@ -118,6 +118,10 @@ inline __host__ __device__ float complexArg(float2 a)
 {
     return atan2f(a.y, a.x);
 }
+inline __host__ __device__ float complexSquare(float2 a)
+{
+    return a.x*a.x+a.y*a.y;
+}
 
 // make a complex number from phase
 inline __host__ __device__ float2 complexExp(float arg)

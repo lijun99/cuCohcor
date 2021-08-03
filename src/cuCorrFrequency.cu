@@ -17,40 +17,34 @@ cuFreqCorrelator::cuFreqCorrelator(int imageNX, int imageNY, int nImages, cudaSt
 {
 
     int imageSize = imageNX*imageNY;
-    int fImageSize = imageNX*(imageNY/2+1);
     int n[NRANK] ={imageNX, imageNY};
-    
+
     // set up fft plans
-    cufft_Error(cufftPlanMany(&forwardPlan, NRANK, n,
+    cufft_Error(cufftPlanMany(&fftPlan, NRANK, n,
                               NULL, 1, imageSize,
-                              NULL, 1, fImageSize, 
-                              CUFFT_R2C, nImages));
-    cufft_Error(cufftPlanMany(&backwardPlan, NRANK, n, 
-                              NULL, 1, fImageSize,
-                              NULL, 1, imageSize, 
-                              CUFFT_C2R, nImages));
+                              NULL, 1, imageSize,
+                              CUFFT_C2C, nImages));
+
     stream = stream_;
-    cufftSetStream(forwardPlan, stream);
-    cufftSetStream(backwardPlan, stream);
+    cufftSetStream(fftPlan, stream);
 
     // set up work arrays
-    workFM = new cuArrays<float2>(imageNX, (imageNY/2+1), nImages);
+    workFM = new cuArrays<float2>(imageNX, imageNY, nImages);
     workFM->allocate();
-    workFS = new cuArrays<float2>(imageNX, (imageNY/2+1), nImages);
+    workFS = new cuArrays<float2>(imageNX, imageNY, nImages);
     workFS->allocate();
-    workT = new cuArrays<float> (imageNX, imageNY, nImages);
+    workT = new cuArrays<float2> (imageNX, imageNY, nImages);
     workT->allocate();
 }
 
 /// destructor
 cuFreqCorrelator::~cuFreqCorrelator()
 {
-    cufft_Error(cufftDestroy(forwardPlan));
-    cufft_Error(cufftDestroy(backwardPlan));	
+    cufft_Error(cufftDestroy(fftPlan));
     workFM->deallocate();
     workFS->deallocate();
     workT->deallocate();
-}	
+}
 
 
 /**
@@ -60,21 +54,22 @@ cuFreqCorrelator::~cuFreqCorrelator()
  * @param[out] results the correlation surfaces
  */
 
-void cuFreqCorrelator::execute(cuArrays<float> *templates, cuArrays<float> *images, cuArrays<float> *results)
+void cuFreqCorrelator::execute(cuArrays<float2> *templates, cuArrays<float2> *images, cuArrays<float> *results)
 {
     // pad the reference windows to the the size of search windows
+    // note: cuArraysCopyPadded has both float and float2 implementations
     cuArraysCopyPadded(templates, workT, stream);
     // forward fft to frequency domain
-    cufft_Error(cufftExecR2C(forwardPlan, workT->devData, workFM->devData));
-    cufft_Error(cufftExecR2C(forwardPlan, images->devData, workFS->devData));
+    cufft_Error(cufftExecC2C(fftPlan, workT->devData, workFM->devData, CUFFT_FORWARD));
+    cufft_Error(cufftExecR2C(fftPlan, images->devData, workFS->devData, CUFFT_FORWARD));
     // cufft doesn't normalize, so manually get the image size for normalization
     float coef = 1.0/(images->size);
     // multiply reference with secondary windows in frequency domain
     cuArraysElementMultiplyConjugate(workFM, workFS, coef, stream);
     // backward fft to get correlation surface in time domain
-    cufft_Error(cufftExecC2R(backwardPlan, workFM->devData, workT->devData));
+    cufft_Error(cufftExecC2C(fftPlan, workFM->devData, workT->devData, CUFFT_INVERSE));
     // extract to get proper size of correlation surface
-    cuArraysCopyExtract(workT, results, make_int2(0, 0), stream);
+    cuArraysCopyExtractC2A(workT, results, make_int2(0, 0), stream);
     // all done
 }
 
@@ -89,11 +84,11 @@ __global__ void cudaKernel_elementMulConjugate(float2 *ainout, float2 *bin, int 
 {
     int idx = threadIdx.x + blockIdx.x*blockDim.x;
     if(idx < size) {
-        cuComplex prod; 
+        cuComplex prod;
         prod = cuMulConj(ainout[idx], bin[idx]);
         ainout [idx] = prod*coef;
     }
-} 
+}
 
 /**
  * Perform multiplication of coef*Conjugate[image1]*image2 for each element
@@ -108,5 +103,5 @@ void cuArraysElementMultiplyConjugate(cuArrays<float2> *image1, cuArrays<float2>
     int blockspergrid = IDIVUP (size, threadsperblock);
     cudaKernel_elementMulConjugate<<<blockspergrid, threadsperblock, 0, stream>>>(image1->devData, image2->devData, size, coef );
     getLastCudaError("cuArraysElementMultiply error\n");
-} 
+}
 //end of file
