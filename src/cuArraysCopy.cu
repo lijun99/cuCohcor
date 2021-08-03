@@ -471,42 +471,11 @@ void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float> *imagesOut,
     cuArraysCopyExtract_C2R_FixedOffset<<<blockspergrid, threadsperblock,0, stream>>>
         (imagesIn->devData, imagesIn->height, imagesIn->width,
         imagesOut->devData, imagesOut->height, imagesOut->width, imagesOut->count, offset.x, offset.y);
-    getLastCudaError("cuArraysCopyExtractC2C error");
-}
-
-
-__global__ void cuArraysCopyExtract_C2R_FixedOffset(const float2 *imageIn, const int inNX, const int inNY,
-     float *imageOut, const int outNX, const int outNY, const int nImages,
-     const int offsetX, const int offsetY)
-{
-    int outx = threadIdx.x + blockDim.x*blockIdx.x;
-    int outy = threadIdx.y + blockDim.y*blockIdx.y;
-
-    if(outx < outNX && outy < outNY)
-    {
-        int idxOut = (blockIdx.z * outNX + outx)*outNY+outy;
-        int idxIn = (blockIdx.z*inNX + outx + offsetX)*inNY + outy + offsetY;
-        imageOut[idxOut] = imageIn[idxIn].x;
-    }
-}
-
-/**
- * copy/extract complex images from a large size to float images (by taking real parts)
- * with a smaller size from the location (offsetX, offsetY)
- */
-void cuArraysCopyExtract(cuArrays<float2> *imagesIn, cuArrays<float> *imagesOut, int2 offset, cudaStream_t stream)
-{
-    //assert(imagesIn->height >= imagesOut && inNY >= outNY);
-    const int nthreads = NTHREADS2D;
-    dim3 threadsperblock(nthreads, nthreads,1);
-    dim3 blockspergrid(IDIVUP(imagesOut->height,nthreads), IDIVUP(imagesOut->width,nthreads), imagesOut->count);
-    cuArraysCopyExtract_C2R_FixedOffset<<<blockspergrid, threadsperblock,0, stream>>>
-        (imagesIn->devData, imagesIn->height, imagesIn->width,
-        imagesOut->devData, imagesOut->height, imagesOut->width, imagesOut->count, offset.x, offset.y);
     getLastCudaError("cuArraysCopyExtractC2R error");
 }
 
-__global__ void cuArraysCopyExtract_C2R_FixedOffset(const float2 *imageIn, const int inNX, const int inNY,
+
+__global__ void cuArraysCopyExtract_C2A_FixedOffset(const float2 *imageIn, const int inNX, const int inNY,
      float *imageOut, const int outNX, const int outNY, const int nImages,
      const int offsetX, const int offsetY)
 {

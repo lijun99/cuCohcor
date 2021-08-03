@@ -151,7 +151,7 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
 #endif
 
     // normalize the correlation surface
-    corrNormalizerOverSampled->execute(r_corrBatchZoomIn, r_referenceBatchOverSampled, r_secondaryBatchOverSampled, stream);
+    corrNormalizerOverSampled->execute(r_corrBatchZoomIn, c_referenceBatchOverSampled, c_secondaryBatchOverSampled, stream);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the oversampled correlation surface (normalized)

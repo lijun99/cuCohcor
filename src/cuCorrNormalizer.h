@@ -25,7 +25,7 @@ public:
     cuNormalizeProcessor() = default;
     virtual ~cuNormalizeProcessor() = default;
     // execute interface
-    virtual void execute(cuArrays<float> * correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream) = 0;
+    virtual void execute(cuArrays<float> * correlation, cuArrays<float2> *reference, cuArrays<float2> *secondary, cudaStream_t stream) = 0;
 };
 
 // factory with the secondary dimension
@@ -36,20 +36,20 @@ template<int Size>
 class cuNormalizeFixed : public cuNormalizeProcessor
 {
 public:
-    void execute(cuArrays<float> * correlation, cuArrays<float> *reference, cuArrays<float> *search, cudaStream_t stream) override;
+    void execute(cuArrays<float> * correlation, cuArrays<float2> *reference, cuArrays<float2> *search, cudaStream_t stream) override;
 };
 
 class cuNormalizeSAT : public cuNormalizeProcessor
 {
 private:
     cuArrays<float> *referenceSum2;
-    cuArrays<float> *secondarySAT;
+    cuArrays<float2> *secondarySAT;
     cuArrays<float> *secondarySAT2;
 
 public:
     cuNormalizeSAT(int secondaryNX, int secondaryNY, int count);
     ~cuNormalizeSAT();
-    void execute(cuArrays<float> * correlation, cuArrays<float> *reference, cuArrays<float> *search, cudaStream_t stream) override;
+    void execute(cuArrays<float> * correlation, cuArrays<float2> *reference, cuArrays<float2> *search, cudaStream_t stream) override;
 };
 
 #endif

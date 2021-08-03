@@ -64,7 +64,7 @@ __global__ void cuArraysMean_kernel(float2 *images, float2 *image_sum, int image
 
     const int       imageIdx = bid;
     const int imageOffset = imageIdx * imageSize;
-    float   *imageD = images + imageOffset;
+    float2   *imageD = images + imageOffset;
 
     float sum  = 0.0f;
     // perform the reduction beyond one block
@@ -75,8 +75,7 @@ __global__ void cuArraysMean_kernel(float2 *images, float2 *image_sum, int image
     // reduction within the block
     sum = sumReduceBlock<Nthreads>(sum, shmem);
 
-    const float mean = sum * invSize;
-    if(tid ==0) image_sum[bid].x = mean;
+    if(tid ==0) image_sum[bid].x = sum * invSize;
 
     sum  = 0.0f;
     // perform the reduction beyond one block
@@ -87,8 +86,7 @@ __global__ void cuArraysMean_kernel(float2 *images, float2 *image_sum, int image
     // reduction within the block
     sum = sumReduceBlock<Nthreads>(sum, shmem);
 
-    mean = sum * invSize;
-    if(tid ==0) image_sum[bid].y = mean;
+    if(tid ==0) image_sum[bid].y = sum * invSize;
 
 }
 
@@ -100,6 +98,7 @@ __global__ void cuArraysMean_kernel(float2 *images, float2 *image_sum, int image
  */
 void cuArraysMeanValue(cuArrays<float2> *images, cuArrays<float2> *mean, cudaStream_t stream)
 {
+
     const dim3 grid(images->count, 1, 1);
     const int imageSize = images->width*images->height;
     const float invSize = 1.0f/imageSize;
@@ -121,7 +120,7 @@ __global__ void cuArraysSubtractMean_kernel(float2 *images, int imageSize, float
 
     const int       imageIdx = bid;
     const int imageOffset = imageIdx * imageSize;
-    float   *imageD = images + imageOffset;
+    float2   *imageD = images + imageOffset;
 
     // compute the sum
     float sum  = 0.0f;

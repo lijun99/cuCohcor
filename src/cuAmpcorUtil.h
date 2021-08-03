@@ -61,16 +61,11 @@ void cuArraysPaddingMany(cuArrays<float2> *image1, cuArrays<float2> *image2, cud
 
 //in cuCorrNormalization.cu: utilities to normalize the cross correlation function
 void cuArraysSubtractMean(cuArrays<float2> *images, cudaStream_t stream);
-void cuCorrNormalize(cuArrays<float> *templates, cuArrays<float> *images, cuArrays<float> *results, cudaStream_t stream);
-void cuCorrNormalize64(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
-void cuCorrNormalize128(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
-void cuCorrNormalize256(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
-void cuCorrNormalize512(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
-void cuCorrNormalize1024(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);
+void cuCorrNormalize(cuArrays<float2> *templates, cuArrays<float2> *images, cuArrays<float> *results, cudaStream_t stream);
 
 // in cuCorrNormalizationSAT.cu: to normalize the cross correlation function with sum area table
-void cuCorrNormalizeSAT(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary,
-    cuArrays<float> * referenceSum2, cuArrays<float> *secondarySAT, cuArrays<float> *secondarySAT2, cudaStream_t stream);
+void cuCorrNormalizeSAT(cuArrays<float> *correlation, cuArrays<float2> *reference, cuArrays<float2> *secondary,
+    cuArrays<float> * referenceSum2, cuArrays<float2> *secondarySAT, cuArrays<float> *secondarySAT2, cudaStream_t stream);
 
 template<int Size>
 void cuCorrNormalizeFixed(cuArrays<float> *correlation, cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream);

@@ -61,7 +61,7 @@ void cuFreqCorrelator::execute(cuArrays<float2> *templates, cuArrays<float2> *im
     cuArraysCopyPadded(templates, workT, stream);
     // forward fft to frequency domain
     cufft_Error(cufftExecC2C(fftPlan, workT->devData, workFM->devData, CUFFT_FORWARD));
-    cufft_Error(cufftExecR2C(fftPlan, images->devData, workFS->devData, CUFFT_FORWARD));
+    cufft_Error(cufftExecC2C(fftPlan, images->devData, workFS->devData, CUFFT_FORWARD));
     // cufft doesn't normalize, so manually get the image size for normalization
     float coef = 1.0/(images->size);
     // multiply reference with secondary windows in frequency domain

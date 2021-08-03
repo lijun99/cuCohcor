@@ -21,7 +21,7 @@ cuNormalizeSAT::cuNormalizeSAT(int secondaryNX, int secondaryNY, int count)
     referenceSum2->allocate();
 
     // secondary sum and sum square
-    secondarySAT = new cuArrays<float>(secondaryNX, secondaryNY, count);
+    secondarySAT = new cuArrays<float2>(secondaryNX, secondaryNY, count);
     secondarySAT->allocate();
     secondarySAT2 = new cuArrays<float>(secondaryNX, secondaryNY, count);
     secondarySAT2->allocate();
@@ -35,23 +35,11 @@ cuNormalizeSAT::~cuNormalizeSAT()
 }
 
 void cuNormalizeSAT::execute(cuArrays<float> *correlation,
-    cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream)
+    cuArrays<float2> *reference, cuArrays<float2> *secondary, cudaStream_t stream)
 {
     cuCorrNormalizeSAT(correlation, reference, secondary,
         referenceSum2, secondarySAT, secondarySAT2, stream);
 }
 
-template<int Size>
-void cuNormalizeFixed<Size>::execute(cuArrays<float> *correlation,
-    cuArrays<float> *reference, cuArrays<float> *secondary, cudaStream_t stream)
-{
-    cuCorrNormalizeFixed<Size>(correlation, reference, secondary, stream);
-}
-
-template class cuNormalizeFixed<64>;
-template class cuNormalizeFixed<128>;
-template class cuNormalizeFixed<256>;
-template class cuNormalizeFixed<512>;
-template class cuNormalizeFixed<1024>;
 
 // end of file

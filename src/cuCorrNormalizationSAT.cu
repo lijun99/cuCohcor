@@ -161,15 +161,15 @@ __global__ void cuCorrNormalizeSAT_kernel(float *correlation, const float *refer
         // sum of value^2
         const float *sat2 = secondarySat2 + imageid*secondaryNX*secondaryNY;
         // get sat2 values for four corners
-        float topleft = (tx > 0 && ty > 0) ? sat2[(tx-1)*secondaryNY+(ty-1)] : 0.0f;
-        float topright = (tx > 0 ) ? sat2[(tx-1)*secondaryNY+(ty+referenceNY-1)] : 0.0f;
-        float bottomleft = (ty > 0) ? sat2[(tx+referenceNX-1)*secondaryNY+(ty-1)] : 0.0f;
-        bottomright = sat2[(tx+referenceNX-1)*secondaryNY+(ty+referenceNY-1)];
-        float secondarySum2 = bottomright + topleft - topright - bottomleft;
+        float topleft2 = (tx > 0 && ty > 0) ? sat2[(tx-1)*secondaryNY+(ty-1)] : 0.0f;
+        float topright2 = (tx > 0 ) ? sat2[(tx-1)*secondaryNY+(ty+referenceNY-1)] : 0.0f;
+        float bottomleft2 = (ty > 0) ? sat2[(tx+referenceNX-1)*secondaryNY+(ty-1)] : 0.0f;
+        float bottomright2 = sat2[(tx+referenceNX-1)*secondaryNY+(ty+referenceNY-1)];
+        float secondarySum2 = bottomright2 + topleft2 - topright2 - bottomleft2;
 
         // compute the normalization
 
-        float norm2 = (secondarySum2-complexSquare(secondarySum))/(referenceNX*referenceNY))*refSum2;
+        float norm2 = (secondarySum2-complexSquare(secondarySum))/(referenceNX*referenceNY)*refSum2;
         // normalize the correlation surface
         correlation[(imageid*corNX+tx)*corNY+ty] *= rsqrtf(norm2 + FLT_EPSILON);
     }
