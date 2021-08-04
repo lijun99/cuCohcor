@@ -45,11 +45,9 @@ private:
 
     // windows raw (not oversampled) data, complex and real
     cuArrays<float2> * c_referenceBatchRaw, * c_secondaryBatchRaw, * c_secondaryBatchZoomIn;
-    cuArrays<float> * r_referenceBatchRaw, * r_secondaryBatchRaw;
 
     // windows oversampled data
     cuArrays<float2> * c_referenceBatchOverSampled, * c_secondaryBatchOverSampled;
-    cuArrays<float> * r_referenceBatchOverSampled, * r_secondaryBatchOverSampled;
     cuArrays<float> * r_corrBatchRaw, * r_corrBatchZoomIn, * r_corrBatchZoomInOverSampled, * r_corrBatchZoomInAdjust;
 
     // offset data

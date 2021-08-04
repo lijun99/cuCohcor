@@ -10,15 +10,16 @@ from Cython.Build import cythonize
 
 import numpy
 
-setup(  name = 'PyCuAmpcor',
-        version = '2.0.0',
+setup(  name = 'PyCuCohcor',
+        version = '0.0.1',
         ext_modules = cythonize(Extension(
-        "PyCuAmpcor",
-        sources=['PyCuAmpcor.pyx'],
+        "PyCuCohcor",
+        sources=['PyCuCohcor.pyx'],
         include_dirs=['/usr/local/cuda/include', numpy.get_include()], # REPLACE WITH YOUR PATH TO YOUR CUDA LIBRARY HEADERS
         extra_compile_args=['-fPIC','-fpermissive'],
         extra_objects=['GDALImage.o','cuAmpcorChunk.o','cuAmpcorParameter.o','cuCorrFrequency.o',
-                       'cuCorrNormalization.o','cuCorrTimeDomain.o','cuArraysCopy.o',
+                       'cuCorrNormalization.o','cuCorrNormalizationSAT.o', 'cuCorrNormalizer.o',
+                       'cuCorrTimeDomain.o','cuArraysCopy.o',
                        'cuArrays.o','cuArraysPadding.o','cuOffset.o','cuOverSampler.o',
                        'cuSincOverSampler.o', 'cuDeramp.o','cuAmpcorController.o','cuEstimateStats.o'],
         extra_link_args=['-L/usr/local/cuda/lib64',

@@ -73,7 +73,7 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
     cuArraysMaxloc2D(r_corrBatchRaw, offsetInit, r_maxval, stream);
 
     // estimate variance
-    cuEstimateVariance(r_corrBatchRaw, offsetInit, r_maxval, r_referenceBatchRaw->size, r_covValue, stream);
+    cuEstimateVariance(r_corrBatchRaw, offsetInit, r_maxval, c_referenceBatchRaw->size, r_covValue, stream);
 
     // estimate SNR
     // step1: extraction of correlation surface around the peak
@@ -396,16 +396,6 @@ cuAmpcorChunk::cuAmpcorChunk(cuAmpcorParameter *param_, GDALImage *reference_, G
         param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
     c_secondaryBatchRaw->allocate();
 
-    r_referenceBatchRaw = new cuArrays<float> (
-        param->windowSizeHeightRaw, param->windowSizeWidthRaw,
-        param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
-    r_referenceBatchRaw->allocate();
-
-    r_secondaryBatchRaw = new cuArrays<float> (
-        param->searchWindowSizeHeightRaw, param->searchWindowSizeWidthRaw,
-        param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
-    r_secondaryBatchRaw->allocate();
-
     c_secondaryBatchZoomIn = new cuArrays<float2> (
         param->searchWindowSizeHeightRawZoomIn, param->searchWindowSizeWidthRawZoomIn,
         param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
@@ -421,15 +411,6 @@ cuAmpcorChunk::cuAmpcorChunk(cuAmpcorParameter *param_, GDALImage *reference_, G
             param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
     c_secondaryBatchOverSampled->allocate();
 
-    r_referenceBatchOverSampled = new cuArrays<float> (
-            param->windowSizeHeight, param->windowSizeWidth,
-            param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
-    r_referenceBatchOverSampled->allocate();
-
-    r_secondaryBatchOverSampled = new cuArrays<float> (
-            param->searchWindowSizeHeight, param->searchWindowSizeWidth,
-            param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
-    r_secondaryBatchOverSampled->allocate();
 
     referenceBatchOverSampler = new cuOverSamplerC2C(
         c_referenceBatchRaw->height, c_referenceBatchRaw->width, //orignal size

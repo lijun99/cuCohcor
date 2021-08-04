@@ -32,13 +32,6 @@ public:
 cuNormalizeProcessor* newCuNormalizer(int NX, int NY, int count);
 
 
-template<int Size>
-class cuNormalizeFixed : public cuNormalizeProcessor
-{
-public:
-    void execute(cuArrays<float> * correlation, cuArrays<float2> *reference, cuArrays<float2> *search, cudaStream_t stream) override;
-};
-
 class cuNormalizeSAT : public cuNormalizeProcessor
 {
 private:
