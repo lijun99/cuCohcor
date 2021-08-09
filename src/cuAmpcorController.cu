@@ -116,6 +116,7 @@ void cuAmpcorController::runAmpcor()
             {
                 int chunkIdxAcross = j+ist;
                 if(chunkIdxAcross < nChunksAcross) {
+                std::cout << "Processing " << i << ", " << j << " \n";
                     chunk[ist]->run(i, chunkIdxAcross);
                 }
             }

@@ -23,7 +23,7 @@ setup(  name = 'PyCuCohcor',
                        'cuArrays.o','cuArraysPadding.o','cuOffset.o','cuOverSampler.o',
                        'cuSincOverSampler.o', 'cuDeramp.o','cuAmpcorController.o','cuEstimateStats.o'],
         extra_link_args=['-L/usr/local/cuda/lib64',
-                        '-L/usr/lib64/nvidia',
-                        '-lcuda','-lcudart','-lcufft','-lgdal'], # REPLACE FIRST PATH WITH YOUR PATH TO YOUR CUDA LIBRARIES
+                        '-L/usr/lib64/nvidia', '-L/opt/anaconda3/envs/isce2/lib',
+                        '-lcudart','-lcufft','-lgdal'], # REPLACE FIRST PATH WITH YOUR PATH TO YOUR CUDA LIBRARIES
         language='c++'
     )))

@@ -14,7 +14,7 @@ import isce
 import isceobj
 from isceobj.Util.decorators import use_api
 from isceobj.Util.ImageUtil import ImageLib as IML
-from contrib.PyCuAmpcor.PyCuAmpcor import PyCuAmpcor
+from PyCuCohcor import PyCuCohcor
 
 
 EXAMPLE = '''example
@@ -183,7 +183,7 @@ def estimateOffsetField(reference, secondary, inps=None):
     length = sar.getLength()
 
     # create a PyCuAmpcor instance
-    objOffset = PyCuAmpcor()
+    objOffset = PyCuCohcor()
 
     objOffset.algorithm = inps.algorithm
     objOffset.deviceID = inps.gpuid

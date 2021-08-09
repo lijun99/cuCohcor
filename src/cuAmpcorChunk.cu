@@ -17,7 +17,6 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
 #ifdef CUAMPCOR_DEBUG
     // dump the raw reference image(s)
     c_referenceBatchRaw->outputToFile("c_referenceBatchRaw", stream);
-    //r_referenceBatchRaw->outputToFile("r_referenceBatchRaw", stream);
 #endif
 
     // deramp ; 1=linear, others = none
@@ -283,39 +282,22 @@ void cuAmpcorChunk::loadReferenceChunk()
 
         //copy the chunk to a batch format (nImages, height, width)
         // if derampMethod = 0 (no deramp), take amplitudes; otherwise, copy complex data
-        if(param->derampMethod == 0) {
-            cuArraysCopyToBatchAbsWithOffset(c_referenceChunkRaw, param->referenceChunkWidth[idxChunk],
-                c_referenceBatchRaw, ChunkOffsetDown->devData, ChunkOffsetAcross->devData, stream);
-        }
-        else {
-            cuArraysCopyToBatchWithOffset(c_referenceChunkRaw, param->referenceChunkWidth[idxChunk],
-                c_referenceBatchRaw, ChunkOffsetDown->devData, ChunkOffsetAcross->devData, stream);
-        }
+
+        cuArraysCopyToBatchWithOffset(c_referenceChunkRaw, param->referenceChunkWidth[idxChunk],
+            c_referenceBatchRaw, ChunkOffsetDown->devData, ChunkOffsetAcross->devData, stream);
         // deallocate the gpu buffer
-        delete c_referenceChunkRaw;
+        c_referenceChunkRaw->deallocate();
     }
-    // if the image is real
     else {
-        r_referenceChunkRaw = new cuArrays<float> (param->maxReferenceChunkHeight, param->maxReferenceChunkWidth);
-        r_referenceChunkRaw->allocate();
-
-        // load the data from cpu
-        referenceImage->loadToDevice((void *)r_referenceChunkRaw->devData, startD, startA, height, width, stream);
-
-        // copy the chunk (real) to a batch format (complex)
-        cuArraysCopyToBatchWithOffsetR2C(r_referenceChunkRaw, param->referenceChunkWidth[idxChunk],
-                c_referenceBatchRaw, ChunkOffsetDown->devData, ChunkOffsetAcross->devData, stream);
-        // deallocate the gpu buffer
-        delete r_referenceChunkRaw;
+        std::cout << "Error: the image is not complex\n";
     }
-
 
 }
 
 void cuAmpcorChunk::loadSecondaryChunk()
 {
 
-    //copy to a batch format (nImages, height, width)
+    // get the reading offset (starting pixels for each image)
     getRelativeOffset(ChunkOffsetDown->hostData, param->secondaryStartPixelDown, param->secondaryChunkStartPixelDown[idxChunk]);
     ChunkOffsetDown->copyToDevice(stream);
     getRelativeOffset(ChunkOffsetAcross->hostData, param->secondaryStartPixelAcross, param->secondaryChunkStartPixelAcross[idxChunk]);
@@ -323,6 +305,7 @@ void cuAmpcorChunk::loadSecondaryChunk()
 
     if(secondaryImage->isComplex())
     {
+        // allocate reading buffer on-the-fly
         c_secondaryChunkRaw = new cuArrays<float2> (param->maxSecondaryChunkHeight, param->maxSecondaryChunkWidth);
         c_secondaryChunkRaw->allocate();
 
@@ -333,34 +316,14 @@ void cuAmpcorChunk::loadSecondaryChunk()
             param->secondaryChunkHeight[idxChunk],
             param->secondaryChunkWidth[idxChunk],
             stream);
-
-        if(param->derampMethod == 0) {
-            cuArraysCopyToBatchAbsWithOffset(c_secondaryChunkRaw, param->secondaryChunkWidth[idxChunk],
-                c_secondaryBatchRaw, ChunkOffsetDown->devData, ChunkOffsetAcross->devData, stream);
-        }
-        else {
-           cuArraysCopyToBatchWithOffset(c_secondaryChunkRaw, param->secondaryChunkWidth[idxChunk],
-                c_secondaryBatchRaw, ChunkOffsetDown->devData, ChunkOffsetAcross->devData, stream);
-        }
-        delete c_secondaryChunkRaw;
+        // copy images into batched format
+        cuArraysCopyToBatchWithOffset(c_secondaryChunkRaw, param->secondaryChunkWidth[idxChunk],
+            c_secondaryBatchRaw, ChunkOffsetDown->devData, ChunkOffsetAcross->devData, stream);
+        // deallocate buffer
+        c_secondaryChunkRaw->deallocate();
     }
-    else { //real image
-        //allocate the gpu buffer
-        r_secondaryChunkRaw = new cuArrays<float> (param->maxSecondaryChunkHeight, param->maxSecondaryChunkWidth);
-        r_secondaryChunkRaw->allocate();
-
-        //load a chunk from mmap to gpu
-        secondaryImage->loadToDevice(r_secondaryChunkRaw->devData,
-            param->secondaryChunkStartPixelDown[idxChunk],
-            param->secondaryChunkStartPixelAcross[idxChunk],
-            param->secondaryChunkHeight[idxChunk],
-            param->secondaryChunkWidth[idxChunk],
-            stream);
-
-        // convert to the batch format
-        cuArraysCopyToBatchWithOffsetR2C(r_secondaryChunkRaw, param->secondaryChunkWidth[idxChunk],
-                c_secondaryBatchRaw, ChunkOffsetDown->devData, ChunkOffsetAcross->devData, stream);
-        delete r_secondaryChunkRaw;
+    else {
+        std::cout << "Error: the image is not complex\n";
     }
 }
 
@@ -385,6 +348,9 @@ cuAmpcorChunk::cuAmpcorChunk(cuAmpcorParameter *param_, GDALImage *reference_, G
     ChunkOffsetAcross = new cuArrays<int> (param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
     ChunkOffsetAcross->allocate();
     ChunkOffsetAcross->allocateHost();
+
+    c_referenceChunkRaw = new cuArrays<float2> (param->maxReferenceChunkHeight, param->maxReferenceChunkWidth);
+    c_referenceChunkRaw->allocate();
 
     c_referenceBatchRaw = new cuArrays<float2> (
         param->windowSizeHeightRaw, param->windowSizeWidthRaw,
@@ -519,29 +485,27 @@ cuAmpcorChunk::cuAmpcorChunk(cuAmpcorParameter *param_, GDALImage *reference_, G
             param->numberWindowDownInChunk*param->numberWindowAcrossInChunk,
             stream);
     }
-    if(param->algorithm == 0) {
-        cuCorrFreqDomain = new cuFreqCorrelator(
-            param->searchWindowSizeHeightRaw, param->searchWindowSizeWidthRaw,
-            param->numberWindowDownInChunk*param->numberWindowAcrossInChunk,
-            stream);
-        cuCorrFreqDomain_OverSampled = new cuFreqCorrelator(
+
+    cuCorrFreqDomain = new cuFreqCorrelator(
+        param->searchWindowSizeHeightRaw, param->searchWindowSizeWidthRaw,
+        param->numberWindowDownInChunk*param->numberWindowAcrossInChunk,
+        stream);
+    cuCorrFreqDomain_OverSampled = new cuFreqCorrelator(
             param->searchWindowSizeHeight, param->searchWindowSizeWidth,
             param->numberWindowDownInChunk * param->numberWindowAcrossInChunk,
             stream);
-    }
 
-    corrNormalizerRaw = std::unique_ptr<cuNormalizeProcessor>(newCuNormalizer(
+    corrNormalizerRaw = new cuNormalizeSAT(
         param->searchWindowSizeHeightRaw,
         param->searchWindowSizeWidthRaw,
         param->numberWindowDownInChunk * param->numberWindowAcrossInChunk
-        ));
+        );
 
-    corrNormalizerOverSampled =
-        std::unique_ptr<cuNormalizeProcessor>(newCuNormalizer(
+    corrNormalizerOverSampled = new cuNormalizeSAT(
         param->searchWindowSizeHeight,
         param->searchWindowSizeWidth,
         param->numberWindowDownInChunk * param->numberWindowAcrossInChunk
-        ));
+        );
 
 
 #ifdef CUAMPCOR_DEBUG

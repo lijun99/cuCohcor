@@ -1,13 +1,13 @@
-PROJECT = CUAMPCOR
+PROJECT = CUCOHCOR
 
-LDFLAGS =  -lcuda -lcudart -lcufft -lgdal
+LDFLAGS =  -lcudart -lcufft -lgdal
 CXXFLAGS = -std=c++11 -fpermissive -DNDEBUG -fPIC -shared
 NVCCFLAGS = -std=c++11 -m64 -DNDEBUG \
 		-gencode arch=compute_35,code=sm_35 \
 		-gencode arch=compute_60,code=sm_60 \
 		-Xcompiler -fPIC -shared -Wno-deprecated-gpu-targets \
 		-ftz=false -prec-div=true -prec-sqrt=true \
-		-I/usr/include/gdal
+		-I/opt/anaconda3/envs/isce2/include
 
 CXX=g++
 NVCC=nvcc

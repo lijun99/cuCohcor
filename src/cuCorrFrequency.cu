@@ -84,8 +84,7 @@ __global__ void cudaKernel_elementMulConjugate(float2 *ainout, float2 *bin, int 
 {
     int idx = threadIdx.x + blockIdx.x*blockDim.x;
     if(idx < size) {
-        cuComplex prod;
-        prod = cuMulConj(ainout[idx], bin[idx]);
+        float2 prod =  cuMulConj(ainout[idx], bin[idx]);
         ainout [idx] = prod*coef;
     }
 }

@@ -5,7 +5,10 @@
  */
 
 #include <cooperative_groups.h>
+
+#if __CUDACC_VER_MAJOR__ >= 11
 #include <cooperative_groups/reduce.h>
+#endif
 
 // my declarations
 #include "cuAmpcorUtil.h"
@@ -26,6 +29,8 @@ namespace cg = cooperative_groups;
  * @note use one thread block for each image, blockIdx.x is image index
  **/
 
+
+#if __CUDACC_VER_MAJOR__ >= 11
 // use cg::reduce for NVCC 11 and above
 __global__ void sum_square_kernel(float *sum2, const float2 *images, int n, int batch)
 {
@@ -46,7 +51,7 @@ __global__ void sum_square_kernel(float *sum2, const float2 *images, int n, int 
 
     for(int i = tid; i < n; i += cta.size() ) {
         auto value = image[i];
-        sdata[tid] += value.x*value.x + value.y*value.y;
+        sdata[tid] += complexSquare(value);
     }
 
     cg::sync(cta);
@@ -68,6 +73,69 @@ __global__ void sum_square_kernel(float *sum2, const float2 *images, int n, int 
     }
 }
 
+#else
+// use warp-shuffle reduction for NVCC 9 & 10
+__global__ void sum_square_kernel(float *sum2, const float2 *images, int n, int batch)
+{
+    // get block id for each image
+    int imageid = blockIdx.x;
+    const float2 *image = images + imageid*n;
+
+    // get the thread block
+    cg::thread_block cta = cg::this_thread_block();
+    // get the shared memory
+    extern float __shared__ sdata[];
+
+    // get the current thread
+    unsigned int tid = cta.thread_rank();
+    unsigned int blockSize = cta.size();
+
+    // stride over grid and add the values to the shared memory
+    float sum = 0;
+
+    for(int i = tid; i < n; i += blockSize ) {
+        auto value = image[i];
+        sum += complexSquare(value);
+    }
+    sdata[tid] = sum;
+    cg::sync(cta);
+
+    // do reduction in shared memory in log2 steps
+    if ((blockSize >= 512) && (tid < 256)) {
+        sdata[tid] = sum = sum + sdata[tid + 256];
+    }
+    cg::sync(cta);
+
+    if ((blockSize >= 256) && (tid < 128)) {
+        sdata[tid] = sum = sum + sdata[tid + 128];
+    }
+    cg::sync(cta);
+
+    if ((blockSize >= 128) && (tid < 64)) {
+        sdata[tid] = sum = sum + sdata[tid + 64];
+    }
+    cg::sync(cta);
+
+    // partition thread block into tiles in size 32 (warp)
+    cg::thread_block_tile<32> tile32 = cg::tiled_partition<32>(cta);
+
+    // reduce within warp
+    if(tid < 32) {
+        if(blockSize >=64) sum += sdata[tid + 32];
+        for (int offset = tile32.size()/2; offset >0; offset /=2) {
+            sum += tile32.shfl_down(sum, offset);
+        }
+    }
+
+    // return results with thread 0
+    if(tid == 0) {
+        // assign the value to results
+        sum2[imageid] = sum;
+    }
+}
+#endif // __CUDACC_VER_MAJOR check
+
+
 /**
  * cuda kernel for 2d sum area table
  * Compute the (inclusive) sum area table of the value and value^2 of a batch of 2d images.
@@ -79,7 +147,7 @@ __global__ void sum_square_kernel(float *sum2, const float2 *images, int n, int 
  * @param[in] batch number of images
  **/
 
-__global__ void sat2d_kernel(float2 *sat, float * sat2, const float2 *data, int nx, int ny, int batch)
+__global__ void sat2d_kernel(float2 *sat, float * sat2, const float2 *data, const int nx, const int ny, const int batch)
 {
     // get block id for each image
     int imageid = blockIdx.x;
@@ -130,8 +198,6 @@ __global__ void sat2d_kernel(float2 *sat, float * sat2, const float2 *data, int 
 }
 
 
-
-
 __global__ void cuCorrNormalizeSAT_kernel(float *correlation, const float *referenceSum2, const float2 *secondarySat,
     const float *secondarySat2, const int corNX, const int corNY, const int referenceNX, const int referenceNY,
     const int secondaryNX, const int secondaryNY)
@@ -168,8 +234,8 @@ __global__ void cuCorrNormalizeSAT_kernel(float *correlation, const float *refer
         float secondarySum2 = bottomright2 + topleft2 - topright2 - bottomleft2;
 
         // compute the normalization
-
-        float norm2 = (secondarySum2-complexSquare(secondarySum))/(referenceNX*referenceNY)*refSum2;
+        float norm2 = (secondarySum2-complexSquare(secondarySum)/(referenceNX*referenceNY))*refSum2;
+        // in norm2, secondarySum2 and refSum2 are scaled as imageSize, to be canceled with bare correlation
         // normalize the correlation surface
         correlation[(imageid*corNX+tx)*corNY+ty] *= rsqrtf(norm2 + FLT_EPSILON);
     }
@@ -180,7 +246,7 @@ void cuCorrNormalizeSAT(
     cuArrays<float> *correlation,
     cuArrays<float2> *reference,
     cuArrays<float2> *secondary,
-    cuArrays<float> * referenceSum2,
+    cuArrays<float> *referenceSum2,
     cuArrays<float2> *secondarySat,
     cuArrays<float> *secondarySat2,
     cudaStream_t stream)

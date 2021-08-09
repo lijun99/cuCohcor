@@ -681,6 +681,42 @@ void cuArraysCopyPadded(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut,cu
      getLastCudaError("cuArraysCopyPadded C2C error");
 }
 
+__global__ void cuArraysCopyPaddedConjugate_C2C_kernel(float2 *imageIn, int inNX, int inNY, int sizeIn,
+    float2 *imageOut, int outNX, int outNY, int sizeOut, int nImages)
+{
+    int outx = threadIdx.x + blockDim.x*blockIdx.x;
+    int outy = threadIdx.y + blockDim.y*blockIdx.y;
+
+    if(outx < outNX && outy < outNY)
+    {
+        int idxImage = blockIdx.z;
+        int idxOut = IDX2R(outx, outy, outNY)+idxImage*sizeOut;
+        if(outx < inNX && outy <inNY) {
+            int idxIn = IDX2R(outx, outy, inNY)+idxImage*sizeIn;
+            imageOut[idxOut] = conjugate(imageIn[idxIn]);
+        }
+        else{
+            imageOut[idxOut] = make_float2(0.0f, 0.0f);
+        }
+    }
+}
+
+/**
+ * copy complex images from a smaller size to a larger size while padding 0 for extra elements
+ * @note use for zero-padding in fft oversampling
+ */
+void cuArraysCopyPaddedConjugate(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut,cudaStream_t stream)
+{
+    const int nthreads = NTHREADS2D;
+    int nImages = imageIn->count;
+    dim3 blockSize(nthreads, nthreads,1);
+    dim3 gridSize(IDIVUP(imageOut->height,nthreads), IDIVUP(imageOut->width,nthreads), nImages);
+    cuArraysCopyPaddedConjugate_C2C_kernel<<<gridSize, blockSize, 0, stream>>>
+        (imageIn->devData, imageIn->height, imageIn->width, imageIn->size,
+        imageOut->devData, imageOut->height, imageOut->width, imageOut->size, nImages);
+     getLastCudaError("cuArraysCopyPadded C2C error");
+}
+
 // kernel for cuArraysCopyPadded
 __global__ void cuArraysCopyPadded_R2C_kernel(float *imageIn, int inNX, int inNY, int sizeIn,
     float2 *imageOut, int outNX, int outNY, int sizeOut, int nImages)

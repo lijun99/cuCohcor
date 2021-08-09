@@ -123,7 +123,7 @@ cdef extern from "cuAmpcorController.h":
         cuAmpcorParameter *param
         void runAmpcor()
 
-cdef class PyCuCOhcor(object):
+cdef class PyCuCohcor(object):
     '''
     Python interface for cuda Ampcor
     '''

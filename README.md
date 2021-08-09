@@ -24,6 +24,8 @@ You may install PyCuCohpcor as a standalone package.
 
 We recommend installing it to a virtual Python environment together with ISCE2. See, e.g., [ISCE2 Installation with GPU](https://github.com/lijun99/isce2-install) for a guide. 
 
+**Note** You need to modify *Makefile* and *setup.py* in *src* directory to provide 1) the correct path for GDAL include and lib; 2) the correct GPU architecture; 3) if CUDA is installed in another directory, change the path as well.
+
 ```bash
     # go to PyCucor source directory
     cd src

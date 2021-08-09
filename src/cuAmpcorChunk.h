@@ -41,7 +41,6 @@ private:
     // local variables and workers
     // gpu buffer to load images from file
     cuArrays<float2> * c_referenceChunkRaw, * c_secondaryChunkRaw;
-    cuArrays<float> * r_referenceChunkRaw, * r_secondaryChunkRaw;
 
     // windows raw (not oversampled) data, complex and real
     cuArrays<float2> * c_referenceBatchRaw, * c_secondaryBatchRaw, * c_secondaryBatchZoomIn;
@@ -64,8 +63,8 @@ private:
     cuFreqCorrelator *cuCorrFreqDomain, *cuCorrFreqDomain_OverSampled;
 
     // correlation surface normalizer
-    std::unique_ptr<cuNormalizeProcessor> corrNormalizerRaw;
-    std::unique_ptr<cuNormalizeProcessor> corrNormalizerOverSampled;
+    cuNormalizeSAT *corrNormalizerRaw;
+    cuNormalizeSAT *corrNormalizerOverSampled;
 
     // save offset results in different stages
     cuArrays<int2> *offsetInit;

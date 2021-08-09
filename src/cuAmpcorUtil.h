@@ -45,6 +45,7 @@ void cuArraysCopyInsert(cuArrays<int> *imageIn, cuArrays<int> *imageOut, int off
 void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float> *imageOut,cudaStream_t stream);
 void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float2> *imageOut,cudaStream_t stream);
 void cuArraysCopyPadded(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut,cudaStream_t stream);
+void cuArraysCopyPaddedConjugate(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut,cudaStream_t stream);
 void cuArraysSetConstant(cuArrays<float> *imageIn, float value, cudaStream_t stream);
 
 void cuArraysR2C(cuArrays<float> *image1, cuArrays<float2> *image2, cudaStream_t stream);
