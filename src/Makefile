@@ -74,7 +74,7 @@ cuEstimateStats.o: cuEstimateStats.cu
 
 
 pyampcor: $(OBJS)
-	rm -f PyCuAmpcor.cpp && python3 setup.py build_ext --inplace
+	rm -f PyCuCohcor.cpp && python3 setup.py build_ext --inplace
 
 clean:
-	rm -rf *.o *so build *~  PyCuAmpcor.cpp *.dat
+	rm -rf *.o *so build *~  PyCuCohcor.cpp *.dat
