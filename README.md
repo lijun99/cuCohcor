@@ -14,15 +14,31 @@ PyCuCohcor uses coherent cross-correlation instead of amplitude(incoherent) cros
 
 ## 2. Installation
 
+We recommend installing it to a virtual Python environment together with ISCE2. See, e.g., [ISCE2 Installation with GPU](https://github.com/lijun99/isce2-install) for a guide. 
+
 ### 2.1 CMake Installation 
 
-TBD
+This will be similar with ISCE2 CMake installation. 
+
+```bash 
+    # clone the github repo
+    git clone https://github.com/lijun99/cuCohcor
+    # go to cuCohcor directory
+    cd cuCohcor
+    # create a build directory
+    mkdir build && cd build
+    # run cmake
+    cmake .. -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DCMAKE_CUDA_FLAGS='-arch=sm_60' -DCMAKE_BUILD_TYPE=Release
+    # compile and install
+    make -j && make install
+```
+Remember to change CMake options to appropriate settings, e.g., *CMAKE_CUDA_FLAGS* to the target GPU architecture; *CMAKE_BUILD_TYPE* to *DEBUG* for detailed outputs (correlation surfaces, runs much slower).  
+     
 
 ### 2.2 Standalone Installation
 
 You may install PyCuCohpcor as a standalone package.
 
-We recommend installing it to a virtual Python environment together with ISCE2. See, e.g., [ISCE2 Installation with GPU](https://github.com/lijun99/isce2-install) for a guide. 
 
 **Note** You need to modify *Makefile* and *setup.py* in *src* directory to provide 1) the correct path for GDAL include and lib; 2) the correct GPU architecture; 3) if CUDA is installed in another directory, change the path as well.
 
