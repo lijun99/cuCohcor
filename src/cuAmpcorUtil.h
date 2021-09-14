@@ -18,6 +18,7 @@
 
 
 //in cuArraysCopy.cu: various utilities for copy images file in gpu memory
+void cuArraysCopy(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut, cudaStream_t stream);
 void cuArraysCopyToBatch(cuArrays<float2> *image1, cuArrays<float2> *image2, int strideH, int strideW, cudaStream_t stream);
 void cuArraysCopyToBatchWithOffset(cuArrays<float2> *image1, const int lda1, cuArrays<float2> *image2,
     const int *offsetH, const int* offsetW, cudaStream_t stream);
@@ -42,9 +43,9 @@ void cuArraysCopyInsert(cuArrays<float3> *imageIn, cuArrays<float3> *imageOut, i
 void cuArraysCopyInsert(cuArrays<float> *imageIn, cuArrays<float> *imageOut, int offsetX, int offsetY, cudaStream_t stream);
 void cuArraysCopyInsert(cuArrays<int> *imageIn, cuArrays<int> *imageOut, int offsetX, int offersetY, cudaStream_t stream);
 
-void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float> *imageOut,cudaStream_t stream);
-void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float2> *imageOut,cudaStream_t stream);
-void cuArraysCopyPadded(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut,cudaStream_t stream);
+void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float> *imageOut, cudaStream_t stream);
+void cuArraysCopyPadded(cuArrays<float> *imageIn, cuArrays<float2> *imageOut, cudaStream_t stream);
+void cuArraysCopyPadded(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut, cudaStream_t stream);
 void cuArraysCopyPaddedConjugate(cuArrays<float2> *imageIn, cuArrays<float2> *imageOut,cudaStream_t stream);
 void cuArraysSetConstant(cuArrays<float> *imageIn, float value, cudaStream_t stream);
 

@@ -125,6 +125,9 @@ public:
     int maxReferenceChunkHeight, maxReferenceChunkWidth; ///< max reference chunk size
     int maxSecondaryChunkHeight, maxSecondaryChunkWidth; ///< max secondary chunk size
 
+    int useHannWindowReference; ///< whether to apply Hann Window on reference
+    int useHannWindowSecondary; ///< whether to apply Hann Window on secondary
+
     std::string grossOffsetImageName;  ///< gross offset output filename
     std::string offsetImageName;       ///< Offset fields output filename
     std::string snrImageName;          ///< Output SNR filename

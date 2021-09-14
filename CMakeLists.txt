@@ -62,6 +62,7 @@ cython_add_module(PyCuCohcor
     src/cuOffset.cu
     src/cuOverSampler.cu
     src/cuSincOverSampler.cu
+    src/cuWindowFilter.cu
     )
 
 target_include_directories(PyCuCohcor PRIVATE

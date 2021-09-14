@@ -88,6 +88,12 @@ def createParser():
     parser.add_argument('--drmp', '--deramp', dest='deramp', type=int, default=0,
                         help='deramp method (0: mag for TOPS, 1:complex with linear ramp) (default: %(default)s).')
 
+    # Hann Window Filtering
+    parser.add_argument('--use-hann-ref', type=int, dest='use_hann_reference', default=1,
+                        help='Whether to apply Hann Window on Reference (default: %(default)s).')
+    parser.add_argument('--use-hann-sec', type=int, dest='use_hann_secondary', default=0,
+                        help='Whether to apply Hann Window on secondary (default: %(default)s).')
+
     # gross offset
     gross = parser.add_argument_group('Initial gross offset')
     gross.add_argument('-g','--gross', type=int, dest='gross', default=0,
@@ -249,6 +255,11 @@ def estimateOffsetField(reference, secondary, inps=None):
     objOffset.corrSurfaceOverSamplingMethod = inps.corr_oversamplemethod
     objOffset.corrSurfaceOverSamplingFactor = inps.corr_oversample
     print('correlation surface oversampling factor:', inps.corr_oversample)
+
+    # Hann Window Filtering
+    objOffset.useHannWindowReference = inps.use_hann_reference
+    objOffset.useHannWindowSecondary = inps.use_hann_secondary
+
 
     # output filenames
     fbase = '{}{}'.format(inps.outprefix, inps.outsuffix)

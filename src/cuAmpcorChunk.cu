@@ -35,6 +35,19 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
     c_referenceBatchRaw->outputToFile("c_referenceBatchRawSubMean", stream);
 #endif
 
+    // whether to apply window filter on reference
+    if(param->useHannWindowReference)
+    {
+        // make a copy of the reference images since they will be used again
+        cuArraysCopy(c_referenceBatchRaw, c_referenceBatchRawFiltered, stream);
+        windowFilterReferenceRaw->filter(c_referenceBatchRawFiltered, stream);
+
+#ifdef CUAMPCOR_DEBUG
+        // dump the filtered raw reference image(s)
+        c_referenceBatchRawFiltered->outputToFile("c_referenceBatchRawFiltered", stream);
+#endif
+    }
+
     // load secondary image chunk
     loadSecondaryChunk();
 
@@ -51,8 +64,21 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
     c_secondaryBatchRaw->outputToFile("c_secondaryBatchRawSubMean", stream);
 #endif
 
+    // whether to apply window filter on secondary
+    if(param->useHannWindowSecondary)
+    {
+        // make a copy of the reference images since they will be used again
+        cuArraysCopy(c_secondaryBatchRaw, c_secondaryBatchRawFiltered, stream);
+        windowFilterSecondaryRaw->filter(c_secondaryBatchRawFiltered, stream);
+
+#ifdef CUAMPCOR_DEBUG
+        // dump the filtered raw secondary image(s)
+        c_secondaryBatchRawFiltered->outputToFile("c_secondaryBatchRawFiltered", stream);
+#endif
+    }
+
     //cross correlation for un-oversampled data
-    cuCorrFreqDomain->execute(c_referenceBatchRaw, c_secondaryBatchRaw, r_corrBatchRaw);
+    cuCorrFreqDomain->execute(c_referenceBatchRawFiltered, c_secondaryBatchRawFiltered, r_corrBatchRaw);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the un-normalized correlation surface
@@ -60,7 +86,7 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
 #endif
 
     // normalize the correlation surface
-    corrNormalizerRaw->execute(r_corrBatchRaw, c_referenceBatchRaw, c_secondaryBatchRaw, stream);
+    corrNormalizerRaw->execute(r_corrBatchRaw, c_referenceBatchRawFiltered, c_secondaryBatchRawFiltered, stream);
 
 #ifdef CUAMPCOR_DEBUG
     // dump the normalized correlation surface
@@ -130,6 +156,15 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
     c_referenceBatchOverSampled->outputToFile("c_referenceBatchOverSampledSubMean",stream);
 #endif
 
+    if(param->useHannWindowReference) {
+
+        windowFilterReferenceOverSampled->filter(c_referenceBatchOverSampled, stream);
+#ifdef CUAMPCOR_DEBUG
+        // dump the filtered oversampled reference image(s) with mean subtracted
+        c_referenceBatchOverSampled->outputToFile("c_referenceBatchOverSampledSubMeanFiltered",stream);
+#endif
+    }
+
     // extract secondary and oversample
     cuArraysCopyExtract(c_secondaryBatchRaw, c_secondaryBatchZoomIn, offsetInit, stream);
     secondaryBatchOverSampler->execute(c_secondaryBatchZoomIn, c_secondaryBatchOverSampled, 0);
@@ -140,6 +175,15 @@ void cuAmpcorChunk::run(int idxDown_, int idxAcross_)
     // dump the oversampled secondary image(s)
     c_secondaryBatchOverSampled->outputToFile("c_secondaryBatchOverSampled", stream);
 #endif
+
+    if(param->useHannWindowSecondary) {
+
+        windowFilterSecondaryOverSampled->filter(c_secondaryBatchOverSampled, stream);
+#ifdef CUAMPCOR_DEBUG
+        // dump the filtered oversampled secondary image(s)
+        c_secondaryBatchOverSampled->outputToFile("c_secondaryBatchOverSampledFiltered", stream);
+#endif
+    }
 
     // correlate oversampled images
     cuCorrFreqDomain_OverSampled->execute(c_referenceBatchOverSampled, c_secondaryBatchOverSampled, r_corrBatchZoomIn);
@@ -379,7 +423,7 @@ cuAmpcorChunk::cuAmpcorChunk(cuAmpcorParameter *param_, GDALImage *reference_, G
 
 
     referenceBatchOverSampler = new cuOverSamplerC2C(
-        c_referenceBatchRaw->height, c_referenceBatchRaw->width, //orignal size
+        c_referenceBatchRaw->height, c_referenceBatchRaw->width, //original size
         c_referenceBatchOverSampled->height, c_referenceBatchOverSampled->width, //oversampled size
         c_referenceBatchRaw->count, stream);
 
@@ -506,6 +550,38 @@ cuAmpcorChunk::cuAmpcorChunk(cuAmpcorParameter *param_, GDALImage *reference_, G
         param->searchWindowSizeWidth,
         param->numberWindowDownInChunk * param->numberWindowAcrossInChunk
         );
+
+    // if Hann Filter on reference (both raw and oversampled) is desired
+    if (param->useHannWindowReference) {
+        // raw
+        windowFilterReferenceRaw = new cuHannWindowFilter(
+            param->windowSizeHeightRaw, param->windowSizeWidthRaw);
+        c_referenceBatchRawFiltered = new cuArrays<float2>(
+            param->windowSizeHeightRaw, param->windowSizeWidthRaw,
+            param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
+        c_referenceBatchRawFiltered -> allocate();
+        // oversampled
+        windowFilterReferenceOverSampled = new cuHannWindowFilter(
+            param->windowSizeHeight, param->windowSizeWidth);
+    }
+    else {
+        //if not, make a link of the data
+        c_referenceBatchRawFiltered = c_referenceBatchRaw;
+    }
+    // same for the secondary image
+    if (param->useHannWindowSecondary) {
+        windowFilterSecondaryRaw = new cuHannWindowFilter(
+            param->searchWindowSizeHeight, param->searchWindowSizeWidthRaw);
+        c_secondaryBatchRawFiltered = new cuArrays<float2>(
+            param->searchWindowSizeHeightRaw, param->searchWindowSizeWidthRaw,
+            param->numberWindowDownInChunk, param->numberWindowAcrossInChunk);
+        c_secondaryBatchRawFiltered->allocate();
+        windowFilterSecondaryOverSampled = new cuHannWindowFilter(
+            param->searchWindowSizeHeight, param->searchWindowSizeWidth);
+    }
+    else {
+        c_secondaryBatchRawFiltered = c_secondaryBatchRaw;
+    }
 
 
 #ifdef CUAMPCOR_DEBUG

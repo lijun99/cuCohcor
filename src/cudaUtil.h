@@ -22,14 +22,10 @@
 #define NTHREADS2D 16 //
 
 #define WARPSIZE 32
-#define MAXTHREADS 1024  //2048 for newer GPUs
 
-#ifdef __FERMI__ //2.0: M2090
-#define MAXBLOCKS 65535  //x
-#define MAXBLOCKS2 65535 //y,z
-#else //2.0 and above : K40, ...
-#define MAXBLOCKS 4294967295 //x
-#define MAXBLOCKS2 65535  //y,z
+// pi
+#ifndef PI
+#define PI 3.141592654f
 #endif
 
 #define IDX2R(i,j,NJ) (((i)*(NJ))+(j))  //row-major order

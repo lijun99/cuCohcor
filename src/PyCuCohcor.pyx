@@ -104,6 +104,9 @@ cdef extern from "cuAmpcorParameter.h":
         int maxSecondaryChunkHeight         ## max height for secondary chunk
         int maxSecondaryChunkWidth          ## max width for secondary chunk
 
+        int useHannWindowReference          ## whether to apply Hann Window on reference
+        int useHannWindowSecondary          ## whether to apply Hann Window on secondary
+
         string grossOffsetImageName         ## Output Gross Offset fields filename
         string offsetImageName              ## Output Offset fields filename
         string snrImageName                 ## Output SNR filename
@@ -324,6 +327,20 @@ cdef class PyCuCohcor(object):
     @property
     def numberChunks(self):
         return  self.c_cuAmpcor.param.numberChunks
+
+    ## Hann Window Filter
+    @property
+    def useHannWindowReference(self):
+        return self.c_cuAmpcor.param.useHannWindowReference
+    @useHannWindowReference.setter
+    def useHannWindowReference(self, int a):
+        self.c_cuAmpcor.param.useHannWindowReference = a
+    @property
+    def useHannWindowSecondary(self):
+        return self.c_cuAmpcor.param.useHannWindowSecondary
+    @useHannWindowSecondary.setter
+    def useHannWindowSecondary(self, int a):
+        self.c_cuAmpcor.param.useHannWindowSecondary = a
 
     ## gross offset
     @property

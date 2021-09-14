@@ -54,6 +54,9 @@ cuAmpcorParameter::cuAmpcorParameter()
     referenceStartPixelDown0 = 0;
     referenceStartPixelAcross0 = 0;
 
+    useHannWindowReference = 1;
+    useHannWindowSecondary = 0;
+
     corrStatWindowSize = 21; // 10*2+1 as in RIOPAC
 
     useMmap = 1; // use mmap

@@ -15,6 +15,7 @@
 #include "cuSincOverSampler.h"
 #include "cuCorrFrequency.h"
 #include "cuCorrNormalizer.h"
+#include "cuWindowFilter.h"
 
 
 /**
@@ -65,6 +66,18 @@ private:
     // correlation surface normalizer
     cuNormalizeSAT *corrNormalizerRaw;
     cuNormalizeSAT *corrNormalizerOverSampled;
+
+    // Window filter processor
+    cuHannWindowFilter * windowFilterReferenceRaw;
+    cuHannWindowFilter * windowFilterSecondaryRaw;
+    cuHannWindowFilter * windowFilterReferenceOverSampled;
+    cuHannWindowFilter * windowFilterSecondaryOverSampled;
+
+    // temp array for filtering
+    cuArrays<float2> *c_referenceBatchRawFiltered;
+    cuArrays<float2> *c_secondaryBatchRawFiltered;
+    cuArrays<float2> *c_referenceBatchOverSampledFiltered;
+    cuArrays<float2> *c_secondaryBatchOverSampledFiltered;
 
     // save offset results in different stages
     cuArrays<int2> *offsetInit;

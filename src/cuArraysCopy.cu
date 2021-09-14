@@ -26,6 +26,13 @@
 #include "cudaError.h"
 #include "float2.h"
 
+// duplicate cuArrays in gpu
+void cuArraysCopy(cuArrays<float2> * imageIn, cuArrays<float2> *imageOut, cudaStream_t stream)
+{
+    checkCudaErrors(cudaMemcpyAsync(imageOut->devData, imageIn->devData, imageOut->getByteSize(), cudaMemcpyDeviceToDevice, stream));
+}
+
+
 // cuda kernel for cuArraysCopyToBatch
 __global__ void cuArraysCopyToBatch_kernel(const float2 *imageIn, const int inNX, const int inNY,
     float2 *imageOut, const int outNX, const int outNY,
